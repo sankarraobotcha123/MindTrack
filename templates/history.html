@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}History{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-10">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h4 class="card-title mb-3">Your Detection History</h4>
+
+        {% if records %}
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Text</th>
+                  <th>Voice</th>
+                  <th>Result</th>
+                  <th>When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in records %}
+                  <tr>
+                    <td>{{ loop.index }}</td>
+                    <td style="max-width:320px; white-space:pre-wrap;">{{ r.text_input or '-' }}</td>
+                    <td>
+                      {% if r.voice_file %}
+                        <audio controls style="max-width:200px">
+                          <source src="{{ url_for('static', filename=r.voice_file.split('static/')[-1]) }}">
+                          Your browser doesn't support audio.
+                        </audio>
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td>{{ r.stress_level }}</td>
+                    <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-muted">No records yet. Try detecting a sample to save history.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

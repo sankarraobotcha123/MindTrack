@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}Stress Detection{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-10">
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h4 class="card-title mb-3">Stress Detection</h4>
+
+        <form method="POST" enctype="multipart/form-data" class="mb-3" id="detectForm">
+          <div class="mb-3">
+            <label class="form-label">Text Input</label>
+            <textarea name="text_input" class="form-control" rows="1" placeholder="Type something..."></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Voice File</label>
+            <input class="form-control" type="file" name="voice_file" accept="audio/*">
+            <div class="form-text">Accepted: .wav, .mp3</div>
+          </div>
+
+          <!-- Optional: Microphone record UI -->
+          <div class="mb-3">
+            <label class="form-label">Or record from your mic</label>
+            <div class="d-flex gap-2">
+              <button id="recordBtn" type="button" class="btn btn-outline-secondary">Start Recording</button>
+              <button id="stopBtn" type="button" class="btn btn-outline-secondary" disabled>Stop</button>
+            </div>
+            <div class="mt-2">
+              <audio id="player" controls style="width:100%; display:none"></audio>
+            </div>
+<!--             <small class="form-text text-muted">Note: Recorded audio won't be automatically uploaded unless you attach
+              it to the form via JS.</small> -->
+          </div>
+
+          <button class="btn btn-primary" type="submit">Detect Stress</button>
+        </form>
+        <div id="resultContainer">
+          {% if detailed %}
+          <div class="mt-4">
+            <h5>Detailed Emotion Scores</h5>
+
+            {% if detailed.text %}
+            <h6>Text Emotions</h6>
+            <table class="table table-sm table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Emotion</th>
+                  <th>Score</th>
+                  <th>Intensity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in detailed.text.raw[0] %}
+                {% set score = item.score %}
+                {% set label = item.label %}
+                {% if label in ['anger', 'fear', 'sadness', 'disgust'] %}
+                {% set color = 'bg-danger' if score >= 0.5 else 'bg-warning' %}
+                {% elif label == 'joy' %}
+                {% set color = 'bg-success' if score >= 0.5 else 'bg-light' %}
+                {% elif label == 'neutral' %}
+                {% set color = 'bg-secondary' %}
+                {% else %}
+                {% set color = 'bg-light' %}
+                {% endif %}
+                <tr>
+                  <td>{{ label.capitalize() }}</td>
+                  <td>{{ score | round(3) }}</td>
+                  <td>
+                    <div class="progress" style="height: 20px;">
+                      <div class="progress-bar {{ color }}" role="progressbar" style="width: {{ (score*100)|round(1) }}%;"
+                        aria-valuenow="{{ (score*100)|round(1) }}" aria-valuemin="0" aria-valuemax="100">
+                        {{ (score*100)|round(1) }}%
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% endif %}
+          </div>
+          {% if detailed.voice %}
+            <h6>Voice Emotion Details</h6>
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Emotion</th>
+                  <th>Score</th>
+                  <th>Intensity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in detailed.voice.raw %}
+                  {% if item is mapping and 'label' in item %}
+                    {% set label = item.label %}
+                    {% set score = item.score %}
+                    {% set label_lower = label.lower() %}
+                    {% if label_lower in ['anger', 'fear', 'sadness', 'disgust', 'ang'] %}
+                        {% set color = 'bg-danger' if score >= 0.5 else 'bg-warning' %}
+                    {% elif label_lower in ['joy', 'happy', 'hap'] %}
+                        {% set color = 'bg-success' if score >= 0.5 else 'bg-light text-dark' %}
+                    {% elif label_lower in ['neutral', 'neu'] %}
+                        {% set color = 'bg-secondary text-white' %}
+                    {% else %}
+                        {% set color = 'bg-light text-dark' %}
+                    {% endif %}
+                    <td>{{ label.capitalize() }}</td>
+                    <td>{{ score | round(3) }}</td>
+                    <td>
+                      <div class="progress" style="height: 20px;">
+                        <div class="progress-bar {{ color }}" role="progressbar"
+                          style="width: {{ (score*100)|round(1) }}%;"
+                          aria-valuenow="{{ (score*100)|round(1) }}" aria-valuemin="0" aria-valuemax="100">
+                          {{ (score*100)|round(1) }}%
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  {% endif %}
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p>No voice data available</p>
+          {% endif %}
+
+
+          <!-- Color Legend -->
+          <div class="mt-3">
+            <h6>Color Legend</h6>
+            <div class="d-flex gap-3 flex-wrap">
+              <span class="badge bg-danger">High Negative (Anger/Fear/Sadness/Disgust)</span>
+              <span class="badge bg-warning">Medium Negative (Anger/Fear/Sadness/Disgust)</span>
+                  <span class="badge bg-success">Positive (Joy)</span>
+                  <span class="badge bg-secondary">Neutral</span>
+                  <span class="badge bg-light text-dark border">Low / Other</span>
+            </div>
+          </div>
+
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const form = document.getElementById('detectForm');
+  let recordBtn = document.getElementById('recordBtn');
+  let stopBtn = document.getElementById('stopBtn');
+  let player = document.getElementById('player');
+  let mediaRecorder, audioChunks;
+  let recordedBlob = null;
+
+  // === Setup recording controls ===
+  function setupRecorder() {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      recordBtn.addEventListener('click', async () => {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = () => {
+          recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
+          const url = URL.createObjectURL(recordedBlob);
+          player.src = url;
+          player.style.display = 'block';
+        };
+
+        mediaRecorder.start();
+        recordBtn.disabled = true;
+        stopBtn.disabled = false;
+      });
+
+      stopBtn.addEventListener('click', () => {
+        mediaRecorder.stop();
+        recordBtn.disabled = false;
+        stopBtn.disabled = true;
+      });
+    } else {
+      recordBtn.disabled = true;
+      stopBtn.disabled = true;
+    }
+  }
+
+  setupRecorder();
+
+  // === Handle form submission ===
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(form);
+
+    if (recordedBlob) {
+      const recordedFile = new File([recordedBlob], "recorded_audio.webm", { type: "audio/webm" });
+      formData.set('voice_file', recordedFile);
+    }
+
+    const response = await fetch(form.action, {
+      method: 'POST',
+      body: formData
+    });
+
+    const html = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const newResult = doc.querySelector('#resultContainer');
+    const resultContainer = document.getElementById('resultContainer');
+
+    if (newResult && resultContainer) {
+      resultContainer.innerHTML = newResult.innerHTML;
+    }
+
+    // Clear old recording so you can record again
+    recordedBlob = null;
+    player.style.display = 'none';
+    player.src = '';
+
+    // Re-enable recording after updating result
+    setupRecorder();
+  });
+</script>
+
+{% endblock %}
