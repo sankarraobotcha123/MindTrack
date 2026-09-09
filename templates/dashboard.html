@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h3 class="fw-bold mb-1"><i class="bi bi-speedometer2 text-primary me-2"></i>Wellness Analytics Dashboard</h3>
+    <p class="text-muted mb-0">Longitudinal tracking for multimodal fusion scores, stress risk levels, and emotion trends.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('export_csv') }}" class="btn btn-outline-success d-inline-flex align-items-center gap-1">
+      <i class="bi bi-filetype-csv"></i> Export CSV
+    </a>
+    <a href="{{ url_for('detect') }}" class="btn btn-primary d-inline-flex align-items-center gap-1">
+      <i class="bi bi-plus-circle"></i> New Detection
+    </a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card shadow-sm stat-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="text-muted fw-semibold">Total Records</span>
+          <i class="bi bi-folder2-open text-primary fs-4"></i>
+        </div>
+        <h2>{{ stats.total }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm stat-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="text-muted fw-semibold">
+            Average Fusion
+            <i class="bi bi-question-circle text-muted fs-6" data-bs-toggle="tooltip" title="Mean composite stress score across all your evaluations (0 = Low, 100 = High)."></i>
+          </span>
+          <i class="bi bi-activity text-info fs-4"></i>
+        </div>
+        <h2>{{ stats.avg_score }}<span class="fs-6 text-muted fw-normal"> / 100</span></h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm stat-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="text-muted fw-semibold">High Stress</span>
+          <i class="bi bi-exclamation-triangle text-warning fs-4"></i>
+        </div>
+        <h2 class="text-warning-emphasis">{{ stats.high_count }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm stat-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="text-muted fw-semibold">
+            High Risk Alerts
+            <i class="bi bi-question-circle text-muted fs-6" data-bs-toggle="tooltip" title="Number of evaluations scoring >= 70 triggering wellness recommendations."></i>
+          </span>
+          <i class="bi bi-shield-slash text-danger fs-4"></i>
+        </div>
+        <h2 class="text-danger">{{ stats.high_risk_count }}</h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="alert alert-info border-0 shadow-sm d-flex align-items-center gap-2 mb-4">
+  <i class="bi bi-info-circle-fill fs-5"></i>
+  <div><strong>System Insight:</strong> {{ stats.risk_message }}</div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="card-title fw-bold mb-3"><i class="bi bi-graph-up me-2"></i>7-Day Fusion Score Trend</h5>
+        <canvas id="trendChart" height="130"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="card-title fw-bold mb-3"><i class="bi bi-pie-chart me-2"></i>Risk Tier Distribution</h5>
+        <canvas id="riskChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="card-title fw-bold mb-3"><i class="bi bi-bar-chart me-2"></i>Stress Level Breakdown</h5>
+        <canvas id="stressChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="card-title fw-bold mb-3"><i class="bi bi-emoji-smile me-2"></i>Emotion Occurrences</h5>
+        <canvas id="emotionChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="card-title fw-bold mb-3"><i class="bi bi-calendar-check me-2"></i>Weekly Highlights</h5>
+        {% if stats.total %}
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+              <span>Best Regulated Day:</span>
+              <strong>{{ stats.best.created_at.strftime('%d %b') if stats.best and stats.best.created_at else '-' }} (Score: {{ stats.best.final_score or '-' }})</strong>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+              <span>Peak Stress Record:</span>
+              <strong class="text-danger">{{ stats.worst.created_at.strftime('%d %b') if stats.worst and stats.worst.created_at else '-' }} (Score: {{ stats.worst.final_score or '-' }})</strong>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+              <span>Low / Med / High Ratio:</span>
+              <span class="badge bg-light text-dark border">{{ stats.low_count }} : {{ stats.medium_count }} : {{ stats.high_count }}</span>
+            </li>
+          </ul>
+        {% else %}
+          <p class="text-muted small">No evaluation records saved yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold mb-0"><i class="bi bi-clock-history me-2"></i>Latest Detection Summary</h5>
+          {% if stats.latest %}
+            <a class="btn btn-outline-primary btn-sm" href="{{ url_for('report', record_id=stats.latest.id) }}">
+              <i class="bi bi-file-earmark-pdf me-1"></i> Download Clinical Report
+            </a>
+          {% endif %}
+        </div>
+        {% if stats.latest %}
+          <div class="row g-2 mb-2">
+            <div class="col-md-3"><strong>Stress Level:</strong> {{ stats.latest.stress_level }}</div>
+            <div class="col-md-3"><strong>Risk Tier:</strong> <span class="badge {{ risk_badge_class(stats.latest.risk_level) }}">{{ stats.latest.risk_level }}</span></div>
+            <div class="col-md-3"><strong>Fusion Score:</strong> {{ stats.latest.final_score }} / 100</div>
+            <div class="col-md-3 text-muted"><strong>Evaluated:</strong> {{ stats.latest.created_at.strftime('%Y-%m-%d %H:%M') if stats.latest.created_at else '-' }}</div>
+          </div>
+          <div class="bg-light p-3 rounded-3 mt-2">
+            <small class="text-muted d-block mb-1 fw-bold">Submitted Text Transcript:</small>
+            <span class="text-dark small">{{ stats.latest.text_input or 'Voice-only modality evaluated.' }}</span>
+          </div>
+        {% else %}
+          <p class="text-muted mb-0">No records found. Run your first analysis from the Detect screen.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const trendLabels = {{ stats.trend_labels | tojson }};
+const trendScores = {{ stats.trend_scores | tojson }};
+const stressLabels = {{ stats.stress_labels | tojson }};
+const stressCounts = {{ stats.stress_counts | tojson }};
+const riskLabels = {{ stats.risk_labels | tojson }};
+const riskCounts = {{ stats.risk_counts | tojson }};
+const emotionLabels = {{ stats.emotion_labels | tojson }};
+const emotionCounts = {{ stats.emotion_counts | tojson }};
+
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: trendLabels,
+    datasets: [{
+      label: 'Fusion Score',
+      data: trendScores,
+      borderColor: '#2563eb',
+      backgroundColor: 'rgba(37, 99, 235, 0.08)',
+      tension: 0.35,
+      fill: true
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: { y: { beginAtZero: true, max: 100 } }
+  }
+});
+
+new Chart(document.getElementById('riskChart'), {
+  type: 'doughnut',
+  data: {
+    labels: riskLabels,
+    datasets: [{
+      data: riskCounts,
+      backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
+    }]
+  },
+  options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+});
+
+new Chart(document.getElementById('stressChart'), {
+  type: 'doughnut',
+  data: {
+    labels: stressLabels,
+    datasets: [{
+      data: stressCounts,
+      backgroundColor: ['#3b82f6', '#8b5cf6', '#ec4899']
+    }]
+  },
+  options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+});
+
+new Chart(document.getElementById('emotionChart'), {
+  type: 'bar',
+  data: {
+    labels: emotionLabels,
+    datasets: [{
+      label: 'Frequency',
+      data: emotionCounts,
+      backgroundColor: '#6366f1',
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+    plugins: { legend: { display: false } }
+  }
+});
+</script>
+{% endblock %}

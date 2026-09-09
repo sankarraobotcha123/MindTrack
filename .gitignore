@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+mindtrack.db
+instance/
+static/uploads/voices/*
+!static/uploads/voices/.gitkeep
+.env
+.vscode/

@@ -1,52 +1,92 @@
 {% extends "base.html" %}
 {% block title %}History{% endblock %}
-
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-10">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h4 class="card-title mb-3">Your Detection History</h4>
-
-        {% if records %}
-          <div class="table-responsive">
-            <table class="table table-striped">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Text</th>
-                  <th>Voice</th>
-                  <th>Result</th>
-                  <th>When</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for r in records %}
-                  <tr>
-                    <td>{{ loop.index }}</td>
-                    <td style="max-width:320px; white-space:pre-wrap;">{{ r.text_input or '-' }}</td>
-                    <td>
-                      {% if r.voice_file %}
-                        <audio controls style="max-width:200px">
-                          <source src="{{ url_for('static', filename=r.voice_file.split('static/')[-1]) }}">
-                          Your browser doesn't support audio.
-                        </audio>
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td>{{ r.stress_level }}</td>
-                    <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        {% else %}
-          <p class="text-muted">No records yet. Try detecting a sample to save history.</p>
-        {% endif %}
+<div class="card shadow-sm border-0">
+  <div class="card-body p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <div>
+        <h4 class="card-title fw-bold mb-1"><i class="bi bi-clock-history text-primary me-2"></i>Detection History</h4>
+        <p class="text-muted mb-0">Audit log of submitted analyses with multimodal scores, risk ratings, and clinical PDF exports.</p>
+      </div>
+      <div class="d-flex gap-2">
+        <a class="btn btn-outline-success d-inline-flex align-items-center gap-1" href="{{ url_for('export_csv') }}">
+          <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
+        </a>
+        <a class="btn btn-outline-primary d-inline-flex align-items-center gap-1" href="{{ url_for('dashboard') }}">
+          <i class="bi bi-graph-up"></i> Analytics
+        </a>
       </div>
     </div>
+
+    {% if records %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mt-2">
+          <thead class="table-light">
+            <tr>
+              <th scope="col" style="width: 5%;">#</th>
+              <th scope="col" style="width: 30%;">Submitted Text</th>
+              <th scope="col" style="width: 15%;">
+                Voice Input
+                <i class="bi bi-question-circle text-muted fs-6" data-bs-toggle="tooltip" title="Playback control for stored audio recording."></i>
+              </th>
+              <th scope="col" style="width: 10%;">Score</th>
+              <th scope="col" style="width: 10%;">Stress</th>
+              <th scope="col" style="width: 10%;">Risk Tier</th>
+              <th scope="col" style="width: 10%;">Emotion</th>
+              <th scope="col" style="width: 10%;">Date</th>
+              <th scope="col" style="width: 5%;">Report</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in records %}
+              {% set data = parse_result_json(r.result_json) %}
+              {% set summary = data.get('summary', {}) %}
+              <tr>
+                <td class="text-muted small">{{ loop.index }}</td>
+                <td>
+                  <div class="small text-truncate" style="max-width: 280px;" title="{{ r.text_input }}">
+                    {{ r.text_input or '<span class="text-muted italic">Voice modality only</span>'|safe }}
+                  </div>
+                </td>
+                <td>
+                  {% if r.voice_file %}
+                    <audio controls style="height: 32px; width: 140px;">
+                      <source src="{{ url_for('static', filename=r.voice_file.split('static/')[-1]) }}">
+                    </audio>
+                  {% else %}
+                    <span class="badge bg-light text-muted border">No Audio</span>
+                  {% endif %}
+                </td>
+                <td class="fw-bold">{{ r.final_score if r.final_score is not none else summary.get('Fusion Score', '-') }}</td>
+                <td>
+                  <span class="badge {% if r.stress_level == 'High' %}bg-danger{% elif r.stress_level == 'Medium' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                    {{ r.stress_level }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge {{ risk_badge_class(r.risk_level or summary.get('Risk Level')) }}">
+                    {{ r.risk_level or summary.get('Risk Level', '-') }}
+                  </span>
+                </td>
+                <td><span class="badge bg-light text-dark border">{{ (r.primary_emotion or summary.get('Primary Emotion', 'N/A'))|capitalize }}</span></td>
+                <td class="small text-muted">{{ r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '-' }}</td>
+                <td>
+                  <a class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1" href="{{ url_for('report', record_id=r.id) }}" title="Download PDF Report">
+                    <i class="bi bi-filetype-pdf"></i>
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-inbox text-muted fs-1 mb-2"></i>
+        <h6 class="text-muted">No detection history logged yet.</h6>
+        <a href="{{ url_for('detect') }}" class="btn btn-primary btn-sm mt-2">Create First Detection</a>
+      </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

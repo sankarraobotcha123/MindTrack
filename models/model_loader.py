@@ -1,42 +1,42 @@
-# models/model_loader.py
-import os
-from transformers import pipeline
-import torch
+"""Safe Hugging Face model loader.
 
-# Choose models (you can change these to any HF model you prefer)
-TEXT_MODEL = "j-hartmann/emotion-english-distilroberta-base"     # text emotion
-VOICE_MODEL = "superb/wav2vec2-base-superb-er"                   # audio emotion
+The app still runs for demo/testing even if transformers, torch, ffmpeg,
+or model caches are unavailable. In that case, predict_*_raw raises a clear error,
+and utils.predict automatically falls back to rule-based scoring.
+"""
 
-# Use GPU if available
-device = 0 if torch.cuda.is_available() else -1
+TEXT_MODEL = "j-hartmann/emotion-english-distilroberta-base"
+VOICE_MODEL = "superb/wav2vec2-base-superb-er"
 
-# Load pipelines (these download to cache on first run)
-try:
-    text_pipeline = pipeline("text-classification", model=TEXT_MODEL, device=device, return_all_scores=True)
-except Exception as e:
-    text_pipeline = None
-    print(f"[model_loader] Failed to load text pipeline: {e}")
+text_pipeline = None
+voice_pipeline = None
+load_errors = []
 
 try:
-    # audio-classification works with files or arrays depending on model.
-    voice_pipeline = pipeline("audio-classification", model=VOICE_MODEL, device=device)
+    import torch
+    from transformers import pipeline
+    device = 0 if torch.cuda.is_available() else -1
+
+    try:
+        text_pipeline = pipeline("text-classification", model=TEXT_MODEL, device=device, top_k=None)
+    except Exception as e:
+        load_errors.append(f"Text pipeline failed: {e}")
+
+    try:
+        voice_pipeline = pipeline("audio-classification", model=VOICE_MODEL, device=device)
+    except Exception as e:
+        load_errors.append(f"Voice pipeline failed: {e}")
 except Exception as e:
-    voice_pipeline = None
-    print(f"[model_loader] Failed to load voice pipeline: {e}")
+    load_errors.append(f"ML libraries unavailable: {e}")
 
 
 def predict_text_raw(text):
-    """Return raw HF pipeline output or raises if unavailable."""
     if text_pipeline is None:
-        raise RuntimeError("Text pipeline not loaded.")
-    out = text_pipeline(text)  # returns list of dicts (if return_all_scores True)
-    return out
+        raise RuntimeError("Text pipeline not loaded. " + " | ".join(load_errors))
+    return text_pipeline(str(text), truncation=True, max_length=512)
 
 
 def predict_voice_raw(audio_path):
-    """Return raw HF pipeline output for the audio file path."""
     if voice_pipeline is None:
-        raise RuntimeError("Voice pipeline not loaded.")
-    # voice_pipeline accepts path to file
-    out = voice_pipeline(audio_path)
-    return out
+        raise RuntimeError("Voice pipeline not loaded. " + " | ".join(load_errors))
+    return voice_pipeline(audio_path)

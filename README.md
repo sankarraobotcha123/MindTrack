@@ -1,193 +1,139 @@
-# MindTrack - AI-Powered Stress Detection System
+# MindTrack Pro
 
-MindTrack is an intelligent web application that detects and analyzes stress levels using both text and voice inputs. The system leverages state-of-the-art Transformer models to identify emotions and map them to stress categories, helping users monitor their emotional well-being.
+**MindTrack Pro: AI-Based Multimodal Mental Wellness Monitoring and Recommendation System**
 
----
+MindTrack Pro is an MCA major-project Flask application that estimates mental wellness/stress level using text emotion analysis and voice emotion recognition. It includes fusion scoring, risk classification, analytics dashboards, personalized recommendations, PDF reports, CSV export, history tracking, and an admin dashboard.
 
-## Features
+> Important: This project is for educational and wellness-awareness purposes only. It is not a medical diagnosis system.
 
-- User Registration and Login
-- Text-Based Stress Detection
-- Voice-Based Stress Detection
-- Combined Multimodal Analysis
-- Stress History Tracking
-- Secure User Authentication
-- Responsive Web Interface
-- Database Storage for Results
+## Major Project Features
 
----
-
-## System Architecture
-
-Input Sources:
-- Text Input
-- Audio Input
-
-AI Models:
-- Text Emotion Classification:
-  - j-hartmann/emotion-english-distilroberta-base
-- Speech Emotion Recognition:
-  - superb/wav2vec2-base-superb-er
-
-Processing:
-- Emotion Detection
-- Emotion-to-Stress Mapping
-- Confidence Score Calculation
-
-Output:
-- Stress Level (Low / Medium / High)
-- Detected Emotion
-- Prediction Confidence
-
----
+- User registration and login
+- Text-based emotion/stress analysis using Hugging Face Transformers
+- Voice emotion recognition using audio classification
+- Fusion AI Engine: combines text and voice scores using 60:40 weighting
+- Risk classification: Low Risk, Moderate Risk, High Risk
+- Personalized wellness recommendation engine
+- User dashboard with 7-day trend charts
+- Stress, risk, and emotion distribution charts
+- Detection history with audio playback
+- PDF report generation for each prediction
+- CSV history export
+- Admin dashboard with overall user and prediction analytics
+- SQLite database with automatic lightweight migration for new fields
 
 ## Tech Stack
 
-### Frontend
-- HTML5
-- CSS3
-- Bootstrap
-- Jinja2 Templates
-
-### Backend
+- Python
 - Flask
 - Flask-Login
 - Flask-SQLAlchemy
-
-### Machine Learning
 - Hugging Face Transformers
 - PyTorch
-- Wav2Vec2
-- DistilRoBERTa
-
-### Database
+- Librosa / SoundFile
+- ReportLab
+- Bootstrap 5
+- Chart.js
 - SQLite
-
----
 
 ## Project Structure
 
-MindTrack/
-│
+```text
+MindTrack Pro
 ├── app.py
 ├── config.py
 ├── requirements.txt
-│
 ├── database/
 │   ├── db_setup.py
-│   ├── models.py
-│
+│   └── models.py
 ├── models/
 │   └── model_loader.py
-│
 ├── utils/
-│   └── predict.py
-│
+│   ├── predict.py
+│   ├── scoring.py
+│   ├── recommendations.py
+│   ├── report_generator.py
+│   └── csv_export.py
 ├── templates/
+│   ├── base.html
 │   ├── index.html
 │   ├── login.html
 │   ├── register.html
+│   ├── dashboard.html
 │   ├── detect.html
-│   └── history.html
-│
+│   ├── history.html
+│   └── admin.html
 └── static/
-    ├── css/
-    └── uploads/
-
----
+```
 
 ## Installation
 
-### 1. Clone Repository
-
-git clone https://github.com/yourusername/MindTrack.git
-
-cd MindTrack
-
-### 2. Create Virtual Environment
-
-conda create -n mindtrack python=3.10
-
-conda activate mindtrack
-
-### 3. Install Dependencies
+```bash
+python -m venv venv
+venv\Scripts\activate     # Windows
+# source venv/bin/activate # Linux/Mac
 
 pip install -r requirements.txt
-
-### 4. Run Application
-
 python app.py
+```
 
-### 5. Open Browser
+Open in browser:
 
+```text
 http://127.0.0.1:5000
+```
 
----
+## Admin Access
 
-## Supported Audio Formats
+The first registered user is automatically marked as admin. Admin users can access:
 
-- WAV
-- MP3
-- FLAC
-- M4A
-- OGG
-- WEBM
+```text
+/admin
+```
 
----
+## Fusion Score Logic
 
-## Stress Classification Logic
+Text and voice outputs are converted to 0-100 scores:
 
-### Low Stress
-Positive emotions:
-- Joy
-- Happiness
-- Relaxed
-- Calm
+- Low stress: around 25
+- Medium stress: around 55
+- High stress: around 85
 
-### Medium Stress
-Neutral emotions:
-- Neutral
-- Surprise
-- Confident
+When both inputs are available:
 
-### High Stress
-Negative emotions:
-- Anger
-- Fear
-- Sadness
-- Disgust
-- Anxiety
+```python
+final_score = text_score * 0.6 + voice_score * 0.4
+```
 
----
+Risk classification:
 
-## Future Enhancements
+| Fusion Score | Stress Level | Risk Level |
+|---|---|---|
+| 0-39 | Low | Low Risk |
+| 40-69 | Medium | Moderate Risk |
+| 70-100 | High | High Risk |
 
-- Real-Time Voice Analysis
-- Mental Health Recommendations
-- Stress Trend Visualization
-- Multi-Language Support
-- Mobile Application
-- Fine-Tuned Stress Detection Models
-- Cloud Deployment
+## Suggested Viva Explanation
 
----
+MindTrack Pro performs multimodal analysis by collecting text and/or voice input. Text is processed through an emotion classification model, while voice is processed through an audio emotion recognition model. The system maps detected emotions into stress categories, converts them into numerical scores, applies weighted fusion, classifies risk level, stores the result, and visualizes trends through dashboards and downloadable reports.
 
-## Applications
+## Disclaimer
 
-- Mental Wellness Monitoring
-- Employee Well-Being Assessment
-- Student Stress Tracking
-- Telehealth Support Systems
-- Emotion-Aware AI Applications
+The system provides estimated wellness/stress indicators only. It should not be used for clinical diagnosis or emergency mental-health assessment.
 
----
+## Latest Scoring Optimization
 
-## Authors
+The updated package avoids identical `55 / Moderate Risk` history rows by adding:
 
-Developed as an AI-powered multimodal stress detection platform using Flask, Transformers, and Deep Learning technologies.
+- Safe model loading: the Flask app can start even if `transformers` or `torch` is unavailable.
+- Text rule-based fallback scoring for demo/offline testing.
+- Emotion-to-score mapping instead of only `low/medium/high` fixed values.
+- Fusion score uses available scores only; text-only, voice-only, and combined inputs now produce different results.
 
----
+Score convention:
 
-## License
+- `0-39` = Low Stress / Low Risk
+- `40-69` = Medium Stress / Moderate Risk
+- `70-100` = High Stress / High Risk
 
-This project is intended for educational and research purposes.
+Note: this is still an educational wellness-awareness system, not a medical diagnosis tool.

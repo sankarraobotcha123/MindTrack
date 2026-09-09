@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h3 class="fw-bold mb-1"><i class="bi bi-shield-lock text-primary me-2"></i>Administrative Console</h3>
+    <p class="text-muted mb-0">System-wide telemetry, user role management, and overall prediction metrics.</p>
+  </div>
+  <a class="btn btn-outline-primary d-inline-flex align-items-center gap-1" href="{{ url_for('dashboard') }}">
+    <i class="bi bi-speedometer2"></i> User Dashboard
+  </a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card shadow-sm stat-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="text-muted fw-semibold">Registered Users</span>
+          <i class="bi bi-people text-primary fs-4"></i>
+        </div>
+        <h2>{{ users|length }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm stat-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="text-muted fw-semibold">
+            Global Predictions
+            <i class="bi bi-question-circle text-muted fs-6" data-bs-toggle="tooltip" title="Total evaluations processed across all registered user accounts."></i>
+          </span>
+          <i class="bi bi-cpu text-info fs-4"></i>
+        </div>
+        <h2>{{ stats.total }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm stat-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="text-muted fw-semibold">Mean Fusion Score</span>
+          <i class="bi bi-calculator text-success fs-4"></i>
+        </div>
+        <h2>{{ stats.avg_score }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm stat-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="text-muted fw-semibold">System High Risk</span>
+          <i class="bi bi-shield-exclamation text-danger fs-4"></i>
+        </div>
+        <h2 class="text-danger">{{ stats.high_risk_count }}</h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="card-title fw-bold mb-3"><i class="bi bi-graph-up me-2"></i>Global 7-Day Fusion Trend</h5>
+        <canvas id="trendChart" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="card-title fw-bold mb-3"><i class="bi bi-pie-chart me-2"></i>Global Risk Distribution</h5>
+        <canvas id="riskChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body p-4">
+    <h5 class="fw-bold mb-3"><i class="bi bi-person-lines-fill text-primary me-2"></i>Registered User Directory</h5>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th scope="col">User ID</th>
+            <th scope="col">Username</th>
+            <th scope="col">Email Address</th>
+            <th scope="col">System Role</th>
+            <th scope="col">Total Evaluations</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+            <tr>
+              <td>#{{ u.id }}</td>
+              <td class="fw-bold">{{ u.username }}</td>
+              <td>{{ u.email }}</td>
+              <td>
+                {% if u.is_admin %}
+                  <span class="badge bg-primary"><i class="bi bi-shield-check me-1"></i>Administrator</span>
+                {% else %}
+                  <span class="badge bg-secondary"><i class="bi bi-person me-1"></i>Standard User</span>
+                {% endif %}
+              </td>
+              <td>{{ u.records|length }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0">
+  <div class="card-body p-4">
+    <h5 class="fw-bold mb-3"><i class="bi bi-list-check text-primary me-2"></i>Recent System-Wide Predictions</h5>
+    {% if records %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">User</th>
+              <th scope="col">Fusion Score</th>
+              <th scope="col">Stress</th>
+              <th scope="col">Risk Level</th>
+              <th scope="col">Primary Emotion</th>
+              <th scope="col">Timestamp</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in records %}
+              <tr>
+                <td>#{{ r.id }}</td>
+                <td class="fw-semibold">{{ r.user.username }}</td>
+                <td class="fw-bold">{{ r.final_score }}</td>
+                <td>{{ r.stress_level }}</td>
+                <td><span class="badge {{ risk_badge_class(r.risk_level) }}">{{ r.risk_level }}</span></td>
+                <td><span class="badge bg-light text-dark border">{{ (r.primary_emotion or '-')|capitalize }}</span></td>
+                <td class="small text-muted">{{ r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '-' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-muted mb-0">No system records available.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: {{ stats.trend_labels | tojson }},
+    datasets: [{
+      label: 'Average Fusion Score',
+      data: {{ stats.trend_scores | tojson }},
+      borderColor: '#4f46e5',
+      backgroundColor: 'rgba(79, 70, 229, 0.08)',
+      tension: 0.35,
+      fill: true
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: { y: { beginAtZero: true, max: 100 } }
+  }
+});
+
+new Chart(document.getElementById('riskChart'), {
+  type: 'doughnut',
+  data: {
+    labels: {{ stats.risk_labels | tojson }},
+    datasets: [{
+      data: {{ stats.risk_counts | tojson }},
+      backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
+    }]
+  },
+  options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+});
+</script>
+{% endblock %}

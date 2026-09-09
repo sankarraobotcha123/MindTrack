@@ -7,4 +7,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or "sqlite:///" + os.path.join(BASE_DIR, "mindtrack.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads", "voices")
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB max upload
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB maximum upload limit
+
+# Ensure the upload directory exists immediately
+os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)

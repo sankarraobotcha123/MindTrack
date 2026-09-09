@@ -1,146 +1,256 @@
 {% extends "base.html" %}
-{% block title %}Stress Detection{% endblock %}
-
+{% block title %}Multimodal Detection{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-md-10">
-    <div class="card shadow-sm mb-4">
-      <div class="card-body">
-        <h4 class="card-title mb-3">Stress Detection</h4>
-
-        <form method="POST" enctype="multipart/form-data" class="mb-3" id="detectForm">
-          <div class="mb-3">
-            <label class="form-label">Text Input</label>
-            <textarea name="text_input" class="form-control" rows="1" placeholder="Type something..."></textarea>
+  <div class="col-lg-10">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div class="p-2 bg-primary-subtle text-primary rounded-3">
+            <i class="bi bi-cpu-fill fs-4"></i>
           </div>
-
-          <div class="mb-3">
-            <label class="form-label">Voice File</label>
-            <input class="form-control" type="file" name="voice_file" accept="audio/*">
-            <div class="form-text">Accepted: .wav, .mp3</div>
+          <div>
+            <h4 class="fw-bold mb-0">Multimodal Stress & Emotion Detection</h4>
+            <p class="text-muted small mb-0">Submit personal text reflections, spoken audio recordings, or both for weighted AI fusion analysis.</p>
           </div>
+        </div>
 
-          <!-- Optional: Microphone record UI -->
-          <div class="mb-3">
-            <label class="form-label">Or record from your mic</label>
-            <div class="d-flex gap-2">
-              <button id="recordBtn" type="button" class="btn btn-outline-secondary">Start Recording</button>
-              <button id="stopBtn" type="button" class="btn btn-outline-secondary" disabled>Stop</button>
+        <div class="accordion mb-4" id="guideAccordion">
+          <div class="accordion-item border rounded-3 overflow-hidden shadow-none">
+            <h2 class="accordion-header" id="headingGuide">
+              <button class="accordion-button collapsed py-2 px-3 bg-light text-primary fw-semibold small" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGuide">
+                <i class="bi bi-info-circle-fill me-2"></i> How Does MindTrack Work? (Terminology & Scoring Guide)
+              </button>
+            </h2>
+            <div id="collapseGuide" class="accordion-collapse collapse" data-bs-parent="#guideAccordion">
+              <div class="accordion-body small bg-white text-muted">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <h6 class="fw-bold text-dark mb-1"><i class="bi bi-diagram-3 text-primary me-1"></i> Multimodal Fusion (60:40)</h6>
+                    <p class="mb-2">Text analysis (RoBERTa) is weighted at 60%, while acoustic vocal features (Wav2Vec2) contribute 40%. Blending both prevents acoustic noise or flat speech from skewing results.</p>
+                    
+                    <h6 class="fw-bold text-dark mb-1"><i class="bi bi-speedometer text-primary me-1"></i> Fusion Score (0 - 100)</h6>
+                    <p class="mb-0">A composite index where 0 represents optimal calm/low stress, and 100 indicates acute emotional distress or burnout risk.</p>
+                  </div>
+                  <div class="col-md-6">
+                    <h6 class="fw-bold text-dark mb-1"><i class="bi bi-shield-check text-primary me-1"></i> Risk Tier Classification</h6>
+                    <ul class="list-unstyled mb-2">
+                      <li><span class="badge bg-success me-1">Low Risk</span> 0 - 39: Stable emotional regulation.</li>
+                      <li><span class="badge bg-warning text-dark me-1">Moderate</span> 40 - 69: Elevated workload or stress tension.</li>
+                      <li><span class="badge bg-danger me-1">High Risk</span> 70 - 100: Persistent distress requiring relief.</li>
+                    </ul>
+
+                    <h6 class="fw-bold text-dark mb-1"><i class="bi bi-bar-chart text-primary me-1"></i> Confidence vs. Intensity</h6>
+                    <p class="mb-0"><strong>Confidence</strong> is the AI model's mathematical certainty (0.0 to 1.0). <strong>Relative Intensity</strong> categorizes the expression into High Negative, Moderate, Neutral, or Positive.</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="mt-2">
-              <audio id="player" controls style="width:100%; display:none"></audio>
-            </div>
-<!--             <small class="form-text text-muted">Note: Recorded audio won't be automatically uploaded unless you attach
-              it to the form via JS.</small> -->
+          </div>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" id="detectForm">
+          <div class="mb-3">
+            <label class="form-label fw-semibold d-flex align-items-center gap-1">
+              <i class="bi bi-chat-left-text text-primary"></i> Textual Expression
+              <i class="bi bi-question-circle text-muted fs-6" data-bs-toggle="tooltip" title="Enter written thoughts or journal reflections. Analyzed via RoBERTa Transformer."></i>
+            </label>
+            <textarea name="text_input" class="form-control" rows="3" placeholder="Describe your current thoughts, stressors, workload, or general mood in natural language..."></textarea>
+            <div class="form-text">Evaluated via RoBERTa deep learning emotion classifier with lexical fallback.</div>
           </div>
 
-          <button class="btn btn-primary" type="submit">Detect Stress</button>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold d-flex align-items-center gap-1">
+                <i class="bi bi-file-earmark-music text-primary"></i> Upload Audio File
+              </label>
+              <input class="form-control" type="file" name="voice_file" accept="audio/*">
+              <div class="form-text">Supported: WAV, MP3, FLAC, M4A, OGG, WebM (Max 16 MB).</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold d-flex align-items-center gap-1">
+                <i class="bi bi-mic text-primary"></i> Or Record Live via Microphone
+              </label>
+              <div class="d-flex gap-2">
+                <button id="recordBtn" type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1">
+                  <i class="bi bi-mic-fill"></i> Start Recording
+                </button>
+                <button id="stopBtn" type="button" class="btn btn-outline-danger d-inline-flex align-items-center gap-1" disabled>
+                  <i class="bi bi-stop-circle"></i> Stop
+                </button>
+              </div>
+              <div class="mt-2">
+                <audio id="player" controls style="width: 100%; height: 36px; display: none;"></audio>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 align-items-center pt-2 border-top">
+            <button class="btn btn-primary px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2" type="submit" id="submitBtn">
+              <i class="bi bi-lightning-charge-fill"></i> Run Multimodal Detection
+            </button>
+            <a class="btn btn-outline-secondary py-2" href="{{ url_for('dashboard') }}">
+              <i class="bi bi-speedometer2 me-1"></i> Dashboard
+            </a>
+          </div>
         </form>
-        <div id="resultContainer">
-          {% if detailed %}
-          <div class="mt-4">
-            <h5>Detailed Emotion Scores</h5>
 
-            {% if detailed.text %}
-            <h6>Text Emotions</h6>
-            <table class="table table-sm table-bordered">
-              <thead class="table-light">
-                <tr>
-                  <th>Emotion</th>
-                  <th>Score</th>
-                  <th>Intensity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for item in detailed.text.raw[0] %}
-                {% set score = item.score %}
-                {% set label = item.label %}
-                {% if label in ['anger', 'fear', 'sadness', 'disgust'] %}
-                {% set color = 'bg-danger' if score >= 0.5 else 'bg-warning' %}
-                {% elif label == 'joy' %}
-                {% set color = 'bg-success' if score >= 0.5 else 'bg-light' %}
-                {% elif label == 'neutral' %}
-                {% set color = 'bg-secondary' %}
-                {% else %}
-                {% set color = 'bg-light' %}
+        <div id="resultContainer">
+          {% if result %}
+            <div class="mt-4 pt-3 border-top">
+              <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h5 class="fw-bold mb-0 text-primary d-flex align-items-center gap-2">
+                  <i class="bi bi-clipboard2-pulse-fill"></i> Detection Summary
+                </h5>
+                {% if saved_record_id %}
+                  <a class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1" href="{{ url_for('report', record_id=saved_record_id) }}">
+                    <i class="bi bi-file-earmark-pdf"></i> Download PDF Report
+                  </a>
                 {% endif %}
-                <tr>
-                  <td>{{ label.capitalize() }}</td>
-                  <td>{{ score | round(3) }}</td>
-                  <td>
-                    <div class="progress" style="height: 20px;">
-                      <div class="progress-bar {{ color }}" role="progressbar" style="width: {{ (score*100)|round(1) }}%;"
-                        aria-valuenow="{{ (score*100)|round(1) }}" aria-valuemin="0" aria-valuemax="100">
-                        {{ (score*100)|round(1) }}%
-                      </div>
+              </div>
+
+              <div class="row g-2 mb-3">
+                {% for key, value in result.items() %}
+                  <div class="col-md-4 col-sm-6">
+                    <div class="p-3 bg-light rounded-3 border text-center">
+                      <small class="text-muted d-block fw-semibold mb-1">
+                        {{ key }}
+                        {% if key == 'Fusion Score' %}
+                          <i class="bi bi-question-circle text-muted" data-bs-toggle="tooltip" title="Unified stress rating (0-100) calculated by blending 60% text and 40% voice scores."></i>
+                        {% elif key == 'Risk Level' %}
+                          <i class="bi bi-question-circle text-muted" data-bs-toggle="tooltip" title="Triage level: Low (0-39), Moderate (40-69), or High (70-100) Risk."></i>
+                        {% endif %}
+                      </small>
+                      {% if key == 'Risk Level' %}
+                        <span class="badge {{ risk_badge_class(value) }} fs-6 px-3 py-1">{{ value }}</span>
+                      {% elif key == 'Fusion Score' %}
+                        <span class="fs-5 fw-bold text-primary">{{ value }}</span>
+                      {% else %}
+                        <span class="fs-6 fw-bold text-dark">{{ value }}</span>
+                      {% endif %}
                     </div>
-                  </td>
-                </tr>
+                  </div>
                 {% endfor %}
-              </tbody>
-            </table>
-            {% endif %}
-          </div>
-          {% if detailed.voice %}
-            <h6>Voice Emotion Details</h6>
-            <table class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Emotion</th>
-                  <th>Score</th>
-                  <th>Intensity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for item in detailed.voice.raw %}
-                  {% if item is mapping and 'label' in item %}
-                    {% set label = item.label %}
-                    {% set score = item.score %}
-                    {% set label_lower = label.lower() %}
-                    {% if label_lower in ['anger', 'fear', 'sadness', 'disgust', 'ang'] %}
-                        {% set color = 'bg-danger' if score >= 0.5 else 'bg-warning' %}
-                    {% elif label_lower in ['joy', 'happy', 'hap'] %}
-                        {% set color = 'bg-success' if score >= 0.5 else 'bg-light text-dark' %}
-                    {% elif label_lower in ['neutral', 'neu'] %}
-                        {% set color = 'bg-secondary text-white' %}
-                    {% else %}
-                        {% set color = 'bg-light text-dark' %}
-                    {% endif %}
-                    <td>{{ label.capitalize() }}</td>
-                    <td>{{ score | round(3) }}</td>
-                    <td>
-                      <div class="progress" style="height: 20px;">
-                        <div class="progress-bar {{ color }}" role="progressbar"
-                          style="width: {{ (score*100)|round(1) }}%;"
-                          aria-valuenow="{{ (score*100)|round(1) }}" aria-valuemin="0" aria-valuemax="100">
-                          {{ (score*100)|round(1) }}%
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                  {% endif %}
-                {% endfor %}
-              </tbody>
-            </table>
-          {% else %}
-            <p>No voice data available</p>
+              </div>
+            </div>
           {% endif %}
 
-
-          <!-- Color Legend -->
-          <div class="mt-3">
-            <h6>Color Legend</h6>
-            <div class="d-flex gap-3 flex-wrap">
-              <span class="badge bg-danger">High Negative (Anger/Fear/Sadness/Disgust)</span>
-              <span class="badge bg-warning">Medium Negative (Anger/Fear/Sadness/Disgust)</span>
-                  <span class="badge bg-success">Positive (Joy)</span>
-                  <span class="badge bg-secondary">Neutral</span>
-                  <span class="badge bg-light text-dark border">Low / Other</span>
+          {% if recommendations %}
+            <div class="card border-0 bg-light-subtle rounded-3 border mt-3">
+              <div class="card-body p-4">
+                <h5 class="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
+                  <i class="bi bi-lightbulb-fill text-warning"></i> Personalized Wellness Recommendations
+                </h5>
+                <ul class="list-unstyled mb-3">
+                  {% for tip in recommendations.tips %}
+                    <li class="d-flex align-items-start gap-2 mb-2">
+                      <i class="bi bi-check-circle-fill text-success mt-1"></i>
+                      <span>{{ tip }}</span>
+                    </li>
+                  {% endfor %}
+                </ul>
+                <div class="p-2 px-3 bg-white rounded-2 border text-muted small">
+                  <i class="bi bi-info-circle me-1"></i> {{ recommendations.disclaimer }}
+                </div>
+              </div>
             </div>
-          </div>
+          {% endif %}
 
+          {% if detailed %}
+            <div class="mt-4 pt-3 border-top">
+              <h5 class="fw-bold mb-3"><i class="bi bi-bar-chart-steps text-primary me-2"></i>Detailed Emotion Probabilities</h5>
+
+              {% if detailed.text and detailed.text.raw %}
+                <h6 class="fw-semibold text-secondary mb-2"><i class="bi bi-card-text me-1"></i>Text Modality Breakdown</h6>
+                <div class="table-responsive mb-4">
+                  <table class="table table-sm table-bordered align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th style="width: 20%;">Emotion</th>
+                        <th style="width: 15%;">
+                          Confidence 
+                          <i class="bi bi-question-circle text-muted" data-bs-toggle="tooltip" title="Statistical probability from 0.0 to 1.0 indicating model certainty."></i>
+                        </th>
+                        <th style="width: 65%;">
+                          Relative Intensity 
+                          <i class="bi bi-question-circle text-muted" data-bs-toggle="tooltip" title="Qualitative emotional expression strength categorized by confidence thresholds."></i>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% set text_items = detailed.text.raw[0] if detailed.text.raw[0] is sequence and detailed.text.raw[0] is not mapping else detailed.text.raw %}
+                      {% for item in text_items %}
+                        {% if item is mapping and 'label' in item %}
+                          {% set label = item.label %}
+                          {% set score = item.score %}
+                          {% set style = emotion_style_fn(label, score) %}
+                          <tr>
+                            <td class="fw-semibold">{{ label.capitalize() }}</td>
+                            <td>{{ score | round(3) }}</td>
+                            <td>
+                              <div class="d-flex align-items-center gap-3">
+                                <div class="progress flex-grow-1" style="height: 10px; background-color: #e2e8f0;">
+                                  <div class="progress-bar {{ style[1].split(' ')[0] }}" style="width: {{ (score*100)|round(1) }}%;"></div>
+                                </div>
+                                <span class="small fw-semibold text-secondary text-nowrap" style="min-width: 140px; font-size: 0.78rem;">
+                                  {{ style[0] }} &bull; {{ (score*100)|round(1) }}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        {% endif %}
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% endif %}
+
+              {% if detailed.voice and detailed.voice.raw %}
+                <h6 class="fw-semibold text-secondary mb-2"><i class="bi bi-mic me-1"></i>Voice Modality Breakdown</h6>
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th style="width: 20%;">Emotion</th>
+                        <th style="width: 15%;">
+                          Confidence 
+                          <i class="bi bi-question-circle text-muted" data-bs-toggle="tooltip" title="Statistical probability from 0.0 to 1.0 indicating model certainty."></i>
+                        </th>
+                        <th style="width: 65%;">
+                          Relative Intensity 
+                          <i class="bi bi-question-circle text-muted" data-bs-toggle="tooltip" title="Qualitative emotional expression strength categorized by confidence thresholds."></i>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for item in detailed.voice.raw %}
+                        {% if item is mapping and 'label' in item %}
+                          {% set label = item.label %}
+                          {% set score = item.score %}
+                          {% set style = emotion_style_fn(label, score) %}
+                          <tr>
+                            <td class="fw-semibold">{{ label.capitalize() }}</td>
+                            <td>{{ score | round(3) }}</td>
+                            <td>
+                              <div class="d-flex align-items-center gap-3">
+                                <div class="progress flex-grow-1" style="height: 10px; background-color: #e2e8f0;">
+                                  <div class="progress-bar {{ style[1].split(' ')[0] }}" style="width: {{ (score*100)|round(1) }}%;"></div>
+                                </div>
+                                <span class="small fw-semibold text-secondary text-nowrap" style="min-width: 140px; font-size: 0.78rem;">
+                                  {{ style[0] }} &bull; {{ (score*100)|round(1) }}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        {% endif %}
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% endif %}
+            </div>
+          {% endif %}
         </div>
-        {% endif %}
       </div>
     </div>
   </div>
@@ -149,81 +259,114 @@
 
 {% block scripts %}
 <script>
-  const form = document.getElementById('detectForm');
-  let recordBtn = document.getElementById('recordBtn');
-  let stopBtn = document.getElementById('stopBtn');
-  let player = document.getElementById('player');
-  let mediaRecorder, audioChunks;
-  let recordedBlob = null;
+const form = document.getElementById('detectForm');
+const submitBtn = document.getElementById('submitBtn');
+const fileInput = form.querySelector('input[name="voice_file"]');
+let recordBtn = document.getElementById('recordBtn');
+let stopBtn = document.getElementById('stopBtn');
+let player = document.getElementById('player');
+let mediaRecorder, audioChunks, recordedBlob = null;
 
-  // === Setup recording controls ===
-  function setupRecorder() {
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      recordBtn.addEventListener('click', async () => {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
-
-        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-        mediaRecorder.onstop = () => {
-          recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
-          const url = URL.createObjectURL(recordedBlob);
-          player.src = url;
-          player.style.display = 'block';
-        };
-
-        mediaRecorder.start();
-        recordBtn.disabled = true;
-        stopBtn.disabled = false;
-      });
-
-      stopBtn.addEventListener('click', () => {
-        mediaRecorder.stop();
-        recordBtn.disabled = false;
-        stopBtn.disabled = true;
-      });
-    } else {
-      recordBtn.disabled = true;
-      stopBtn.disabled = true;
-    }
-  }
-
-  setupRecorder();
-
-  // === Handle form submission ===
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const formData = new FormData(form);
-
-    if (recordedBlob) {
-      const recordedFile = new File([recordedBlob], "recorded_audio.webm", { type: "audio/webm" });
-      formData.set('voice_file', recordedFile);
-    }
-
-    const response = await fetch(form.action, {
-      method: 'POST',
-      body: formData
-    });
-
-    const html = await response.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const newResult = doc.querySelector('#resultContainer');
-    const resultContainer = document.getElementById('resultContainer');
-
-    if (newResult && resultContainer) {
-      resultContainer.innerHTML = newResult.innerHTML;
-    }
-
-    // Clear old recording so you can record again
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length > 0) {
     recordedBlob = null;
     player.style.display = 'none';
     player.src = '';
+  }
+});
 
-    // Re-enable recording after updating result
-    setupRecorder();
-  });
+function setupRecorder() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    recordBtn.disabled = true;
+    stopBtn.disabled = true;
+    return;
+  }
+  recordBtn.onclick = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        player.src = URL.createObjectURL(recordedBlob);
+        player.style.display = 'block';
+        stream.getTracks().forEach(track => track.stop());
+        fileInput.value = '';
+      };
+      mediaRecorder.start();
+      recordBtn.disabled = true;
+      recordBtn.classList.add('recording-active');
+      recordBtn.innerHTML = '<i class="bi bi-record-circle me-1"></i> Recording...';
+      stopBtn.disabled = false;
+    } catch (err) {
+      alert("Microphone permission denied or device not found: " + err.message);
+    }
+  };
+
+  stopBtn.onclick = () => {
+    mediaRecorder.stop();
+    recordBtn.disabled = false;
+    recordBtn.classList.remove('recording-active');
+    recordBtn.innerHTML = '<i class="bi bi-mic-fill"></i> Start Recording';
+    stopBtn.disabled = true;
+  };
+}
+setupRecorder();
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const textVal = form.text_input.value.trim();
+  const fileVal = fileInput.files.length > 0;
+
+  if (!textVal && !fileVal && !recordedBlob) {
+    document.getElementById('resultContainer').innerHTML = `
+      <div class="alert alert-warning border-0 shadow-sm mt-3 d-flex align-items-center gap-2" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <div><strong>Input Required:</strong> Please enter text thoughts, record voice via mic, or upload an audio file.</div>
+      </div>`;
+    return;
+  }
+
+  submitBtn.disabled = true;
+  const originalBtnText = submitBtn.innerHTML;
+  submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Analyzing AI Modalities...';
+
+  const formData = new FormData(form);
+  if (recordedBlob) {
+    formData.set('voice_file', new File([recordedBlob], 'recorded_audio.webm', { type: 'audio/webm' }));
+  }
+
+  try {
+    const response = await fetch(form.action, { method: 'POST', body: formData });
+    const html = await response.text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+    const flashAlert = doc.querySelector('.alert-info');
+    const newResult = doc.querySelector('#resultContainer');
+
+    if (flashAlert && (!newResult || !newResult.innerHTML.trim())) {
+      document.getElementById('resultContainer').innerHTML = flashAlert.outerHTML;
+    } else if (newResult) {
+      document.getElementById('resultContainer').innerHTML = newResult.innerHTML;
+    }
+
+    const dynamicTooltips = document.querySelectorAll('#resultContainer [data-bs-toggle="tooltip"]');
+    [...dynamicTooltips].map(el => new bootstrap.Tooltip(el));
+
+    recordedBlob = null;
+    player.style.display = 'none';
+    player.src = '';
+  } catch (err) {
+    document.getElementById('resultContainer').innerHTML = `
+      <div class="alert alert-danger border-0 shadow-sm mt-3" role="alert">
+        <i class="bi bi-x-circle-fill me-2"></i> Analysis request failed. Please check your network connection and server terminal.
+      </div>`;
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalBtnText;
+  }
+});
 </script>
-
 {% endblock %}
